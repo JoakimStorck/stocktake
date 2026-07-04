@@ -1,0 +1,41 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "stocktake"
+version = "0.1.0"
+description = "Code-audited stock-and-flow diagrams in Forrester notation: hand-declared figures audited against numerical simulation code"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+authors = [{ name = "Joakim Storck" }]
+keywords = [
+    "system-dynamics",
+    "forrester",
+    "stock-and-flow",
+    "graphviz",
+    "static-analysis",
+    "audit",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Visualization",
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+stocktake = "stocktake.cli:main"
+
+[project.urls]
+Origin = "https://github.com/JoakimStorck/technology-fields"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

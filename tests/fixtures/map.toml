@@ -1,0 +1,79 @@
+[extract]
+aliases = { np = "", "state.stock" = "stock" }
+ignore = ["state"]
+ignore_prefixes = ["np.", "math."]
+
+[variables]
+demand = "demand"
+pressure = "pressure"
+inflow = "inflow"
+outflow = "outflow"
+stock = "stock"
+GAMMA = "seed_fraction"
+
+[concepts]
+demand = "Demand"
+pressure = "Pressure"
+inflow = "Inflow"
+outflow = "Outflow"
+stock = "Stock"
+seed_fraction = "Seed fraction"
+
+[[figures]]
+name = "fixture_figure"
+ranks = [["src", "P"], ["S"]]
+
+[[figures.nodes]]
+id = "src"
+kind = "source"
+label = "outside"
+
+[[figures.nodes]]
+id = "fill"
+kind = "rate"
+group = "spine"
+label = "inflow i(t)"
+
+[[figures.nodes]]
+id = "S"
+kind = "level"
+group = "spine"
+label = "Stock\nS(t)"
+
+[[figures.nodes]]
+id = "P"
+kind = "aux"
+label = "p(t)"
+
+[[figures.nodes]]
+id = "gamma"
+kind = "param"
+label = "γ_0"
+
+[[figures.edges]]
+from = "src"
+to = "fill"
+channel = "material"
+identity = true
+mechanism = "Source outside the accounting."
+
+[[figures.edges]]
+from = "fill"
+to = "S"
+channel = "material"
+audit = ["inflow->stock"]
+mechanism = "Inflow fills the stock."
+
+[[figures.edges]]
+from = "P"
+to = "fill"
+channel = "information"
+audit = ["pressure->inflow"]
+mechanism = "Inflow follows pressure."
+
+[[figures.edges]]
+from = "gamma"
+to = "fill"
+channel = "information"
+parameter = true
+mechanism = "Seed fraction of pressure."

@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Builds
+build/
+dist/
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+
+# Local outputs
+*.png
+*.pdf
+*.svg
+*.dot
+*_audit.csv
+code_edges.csv
+concept_edges.csv
+unmapped_variables.csv
+unwitnessed_concept_edges.csv
+
+# OS/editor
+.DS_Store
+.vscode/
+.idea/
