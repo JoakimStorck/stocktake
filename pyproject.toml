@@ -35,6 +35,8 @@ dev = ["pytest"]
 stocktake = "stocktake.cli:main"
 
 [project.urls]
+Homepage = "https://github.com/JoakimStorck/stocktake"
+Repository = "https://github.com/JoakimStorck/stocktake"
 Origin = "https://github.com/JoakimStorck/technology-fields"
 
 [tool.pytest.ini_options]

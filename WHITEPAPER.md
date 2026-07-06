@@ -3,7 +3,8 @@
 A whitepaper on the principles behind the tool and how they are
 implemented.
 
-Version 0.3.0 · Origin: `github.com/JoakimStorck/technology-fields`
+Version 0.3.0 · Repository: `github.com/JoakimStorck/stocktake` ·
+Extracted from `github.com/JoakimStorck/technology-fields`
 (`experiment/cld/`)
 
 ---
@@ -543,8 +544,8 @@ They are extraction and layout refinements, and each will become visible
 
 ## 8. Provenance
 
-stocktake was extracted from the research repository
-`github.com/JoakimStorck/technology-fields`, where it began as
+stocktake lives at `github.com/JoakimStorck/stocktake`. It was extracted
+from the research repository `github.com/JoakimStorck/technology-fields`, where it began as
 `experiment/cld/` and produced Figure 2 of a manuscript on dynamic
 labour-market modelling. The research repository now consumes stocktake
 as a dependency rather than containing it; a thin consumer

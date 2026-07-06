@@ -1,13 +1,14 @@
 """stocktake: code-audited stock-and-flow diagrams in Forrester notation.
 
-The figure is hand-declared and code-audited, not code-generated.
-Auto-layout of raw dependency graphs produces noise; hand-drawn diagrams
-silently drift from the code. The audit removes the drift failure mode
-while keeping human judgement over what the diagram says.
+What the diagram shows is hand-declared; whether it is true of the code
+is audited; where it is drawn is generated automatically. What is
+rejected is generating the diagram's content from the raw dependency
+graph (noise) or hand-drawing it (silent drift).
 
-Origin: extracted from github.com/JoakimStorck/technology-fields
-(experiment/cld/, commit 69ec1fd), where it audits the dynamic
-labour-market model and produces a manuscript figure.
+Repository: github.com/JoakimStorck/stocktake
+Extracted from github.com/JoakimStorck/technology-fields
+(experiment/cld/), where it audits a dynamic labour-market model and
+produces a manuscript figure.
 """
 
 from .audit import AuditRow, audit_figure, unwitnessed_concept_edges
