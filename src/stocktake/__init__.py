@@ -23,16 +23,30 @@ from .errors import (
 )
 from .extract import Edge, extract_code_edges
 from .schema import Config, load_config
-from .emit import emit_figure_dot
+from .emit import (
+    compute_layout,
+    emit_figure_dot,
+    figure_layout_diagnostics,
+)
+from .layout import (
+    DerivedLayout,
+    Layout,
+    derive_layout,
+    derive_positions,
+)
+from .metrics import DiagramMetrics, measure
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "AuditError",
     "AuditRow",
     "BuildReport",
     "Config",
+    "DerivedLayout",
+    "DiagramMetrics",
     "Edge",
+    "Layout",
     "MissingMechanismError",
     "SchemaError",
     "StocktakeError",
@@ -40,7 +54,12 @@ __all__ = [
     "UnwitnessedEdgeError",
     "audit_figure",
     "build",
+    "compute_layout",
+    "derive_layout",
+    "derive_positions",
     "emit_figure_dot",
+    "figure_layout_diagnostics",
+    "measure",
     "extract_code_edges",
     "load_config",
     "map_to_concepts",

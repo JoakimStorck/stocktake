@@ -39,8 +39,12 @@ from pathlib import Path
 
 from .errors import SchemaError
 
-NODE_KINDS = {"level", "rate", "aux", "param", "source"}
-CHANNELS = {"material", "personnel", "information"}
+NODE_KINDS = {"level", "rate", "aux", "param", "source", "sink"}
+CHANNELS = {
+    "information",
+    "material", "personnel", "orders", "money", "capital",
+}
+LAYOUT_MODES = {"principled", "manual"}
 
 
 @dataclass
@@ -103,6 +107,14 @@ def validate(config: Config) -> None:
 
 def _validate_figure(figure: dict, concepts: dict[str, str]) -> None:
     name = figure["name"]
+
+    mode = figure.get("layout", "principled")
+    if mode not in LAYOUT_MODES:
+        raise SchemaError(
+            f"figure {name}: unknown layout mode {mode!r} "
+            f"(expected one of {sorted(LAYOUT_MODES)})"
+        )
+
     ids: set[str] = set()
 
     for node in figure.get("nodes", []):

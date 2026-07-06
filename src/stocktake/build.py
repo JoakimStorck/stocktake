@@ -16,7 +16,7 @@ and per figure:
 from __future__ import annotations
 
 import csv
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from .audit import (
@@ -26,7 +26,11 @@ from .audit import (
     write_audit_csv,
 )
 from .concepts import map_to_concepts, unmapped_variables
-from .emit import emit_figure_dot, try_render_dot
+from .emit import (
+    compute_layout,
+    emit_figure_dot,
+    try_render_dot,
+)
 from .extract import Edge, extract_code_edges
 from .schema import Config, load_config
 
@@ -38,6 +42,7 @@ class BuildReport:
     unmapped: list[tuple[str, int]]
     unwitnessed: list[Edge]
     audits: dict[str, list[AuditRow]]  # figure name -> rows
+    layout_diagnostics: dict[str, list[str]] = field(default_factory=dict)
 
     def summary(self) -> str:
         lines = [
@@ -107,13 +112,29 @@ def build(
     _write_counts_csv(out / "unmapped_variables.csv", unmapped)
     _write_edges_csv(out / "unwitnessed_concept_edges.csv", unwitnessed)
 
+    layout_diagnostics: dict[str, list[str]] = {}
     for figure in config.figures:
         name = figure["name"]
         write_audit_csv(out / f"{name}_audit.csv", audits[name])
+
+        # Swim-lane force layout (principled mode, graphviz present);
+        # falls back to structural emission otherwise.
+        layout = compute_layout(figure)
+        positioned = layout is not None
+        dot_text = emit_figure_dot(
+            figure, positions=layout.positions if positioned else None
+        )
         dot_path = out / f"{name}.dot"
-        dot_path.write_text(emit_figure_dot(figure), encoding="utf-8")
+        dot_path.write_text(dot_text, encoding="utf-8")
+
+        diagnostics = layout.diagnostics if positioned else []
+        layout_diagnostics[name] = diagnostics
+        if diagnostics:
+            (out / f"{name}_layout.txt").write_text(
+                "\n".join(diagnostics) + "\n", encoding="utf-8"
+            )
         if render:
-            try_render_dot(dot_path)
+            try_render_dot(dot_path, positioned=positioned)
 
     return BuildReport(
         code_edges=code_edges,
@@ -121,4 +142,5 @@ def build(
         unmapped=unmapped,
         unwitnessed=unwitnessed,
         audits=audits,
+        layout_diagnostics=layout_diagnostics,
     )

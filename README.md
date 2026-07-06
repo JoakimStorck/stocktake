@@ -35,6 +35,27 @@ are code the vocabulary does not yet name.
 A green build certifies figure–code correspondence. It does not certify
 that signs or economic interpretations are right; those remain declared.
 
+## Layout
+
+Figures are laid out from their declared structure — no manual
+`group`/`ranks`/`hints` needed except as exceptions. Flows are rigid
+vertical columns (the spine, held straight) that may translate
+vertically; between them are swim lanes where the variables live,
+confined so they cannot collapse onto a flow. The unit of lane
+assignment is a variable's connected component: a component bridging two
+columns goes between them, a connected cluster stays together and goes
+central, a lone node goes to the periphery. Placement inside the lanes
+is a spring-electrical equilibrium — attraction along edges plus soft
+repulsion between nodes — so connected meshes spread into convex,
+untangled shapes rather than collapsing into a knot. The goal is the
+force balance, not minimum edge length.
+
+Layout quality is measured, not asserted by eye: `stocktake.metrics`
+reports crossings, information-line length, node overlaps, and lines
+passing through node bodies, used as regression guardrails. Explicit
+user layout always wins over the derived layout; `layout = "manual"` on
+a figure bypasses the engine entirely.
+
 ## Usage
 
 ```
