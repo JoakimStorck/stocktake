@@ -132,6 +132,19 @@ def _validate_figure(figure: dict, concepts: dict[str, str]) -> None:
             )
         if "label" not in node:
             raise SchemaError(f"figure {name}: node {node_id!r} has no label")
+        if "pos" in node:
+            parts = str(node["pos"]).split(",")
+            if len(parts) != 2:
+                raise SchemaError(
+                    f"figure {name}: node {node_id!r} pos must be 'x,y'"
+                )
+            try:
+                float(parts[0]); float(parts[1])
+            except ValueError:
+                raise SchemaError(
+                    f"figure {name}: node {node_id!r} pos must be 'x,y' "
+                    f"numbers, got {node['pos']!r}"
+                )
 
     for edge in figure.get("edges", []):
         key = f"{edge.get('from')}->{edge.get('to')}"

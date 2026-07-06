@@ -52,3 +52,31 @@ def test_build_writes_positioned_dot(tmp_path):
     dot = (tmp_path / "fixture_figure.dot").read_text()
     # principled build pins positions for neato -n2
     assert "pos=" in dot
+
+
+def test_user_pos_survives_principled_build():
+    """End-to-end: a user pos on a node is honoured by the principled
+    force layout, not overwritten -- the priority model in principled
+    mode, not only in manual."""
+    from stocktake import compute_layout
+    config = load_config(FIXTURES / "map.toml")
+    figure = config.figures[0]
+    # pin the auxiliary P at a chosen coordinate
+    for node in figure["nodes"]:
+        if node["id"] == "P":
+            node["pos"] = "42,99"
+    layout = compute_layout(figure)
+    assert layout is not None
+    x, y = layout.positions["P"]
+    assert (round(x, 1), round(y, 1)) == (42.0, 99.0)
+
+
+def test_spine_drift_measured_for_figure():
+    config = load_config(FIXTURES / "map.toml")
+    figure = config.figures[0]
+    from stocktake import compute_layout
+    layout = compute_layout(figure)
+    dot = emit_figure_dot(figure, positions=layout.positions)
+    m = measure(dot, positioned=True, figure=figure)
+    assert m.spine_lateral_drift is not None
+    assert m.spine_lateral_drift < 1.0  # single-column spine is straight

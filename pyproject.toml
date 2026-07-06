@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "stocktake"
-version = "0.2.0"
+version = "0.3.0"
 description = "Code-audited stock-and-flow diagrams in Forrester notation: hand-declared figures audited against numerical simulation code"
 readme = "README.md"
 license = "MIT"

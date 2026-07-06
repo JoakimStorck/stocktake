@@ -288,3 +288,46 @@ def test_manual_mode_emits_no_positions():
     figure, _, _ = _two_column_frame()
     figure["layout"] = "manual"
     assert compute_layout(figure) is None
+
+
+# --- user overrides survive principled layout (priority model) -------
+
+def test_pinned_node_stays_at_user_pos():
+    figure, init_pos, sizes = _two_column_frame()
+    # pin v far from where the engine would place it
+    for n in figure["nodes"]:
+        if n["id"] == "v":
+            n["pos"] = "137,242"
+    layout = derive_positions(figure, init_pos, sizes)
+    x, y = layout.positions["v"]
+    assert (round(x, 1), round(y, 1)) == (137.0, 242.0)
+
+
+def test_pinned_node_does_not_freeze_the_rest():
+    figure, init_pos, sizes = _two_column_frame()
+    for n in figure["nodes"]:
+        if n["id"] == "v":
+            n["pos"] = "137,242"
+    layout = derive_positions(figure, init_pos, sizes)
+    # other variables are still placed by the engine (moved from init)
+    moved = any(
+        layout.positions[o] != tuple(init_pos[o])
+        for o in ("h", "c1", "k")
+    )
+    assert moved
+
+
+def test_rank_locked_group_shares_one_y():
+    figure, init_pos, sizes = _two_column_frame()
+    figure["ranks"] = [["h", "c1"]]  # a connected cluster, user-ranked
+    layout = derive_positions(figure, init_pos, sizes)
+    assert round(layout.positions["h"][1], 3) == \
+        round(layout.positions["c1"][1], 3)
+
+
+def test_rank_locked_node_still_moves_laterally():
+    figure, init_pos, sizes = _two_column_frame()
+    figure["ranks"] = [["h", "c1"]]
+    layout = derive_positions(figure, init_pos, sizes)
+    # y is frozen to the group's initial mean (150 and 180 -> 165)
+    assert round(layout.positions["h"][1]) == 165

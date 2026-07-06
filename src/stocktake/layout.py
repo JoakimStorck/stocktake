@@ -332,21 +332,57 @@ def derive_positions(figure, init_pos, sizes) -> Layout:
 
     components, col_x, col_of = _columns(figure, init_pos)
     flow_nodes = set(col_of)
-    variables = [n for n in node_ids if n not in flow_nodes]
+
+    # User overrides (the priority model, honoured in principled mode as
+    # well as manual). A node with an explicit pos is PINNED: excluded
+    # from displacement, an immovable anchor the rest of the layout
+    # arranges around. Nodes sharing a user `ranks` group are RANK-LOCKED:
+    # frozen to a common y, free to move only laterally within their lane.
+    pinned: dict[str, tuple[float, float]] = {}
+    for node in figure.get("nodes", []):
+        if node.get("pos"):
+            xy = _parse_pos(node["pos"])
+            if xy is not None:
+                pinned[node["id"]] = xy
+    immovable = flow_nodes | set(pinned)
+    variables = [n for n in node_ids if n not in immovable]
     lanes, diagnostics = assign_lanes(
         figure, components, col_x, col_of, init_pos
     )
 
     pos = {n: list(init_pos[n]) for n in node_ids}
-    neighbours_x = {v: [init_pos[m][0] for m in _neighbours(v, edges)
-                        if m in init_pos] for v in variables}
-    neighbours_y = {v: [init_pos[m][1] for m in _neighbours(v, edges)
-                        if m in init_pos] for v in variables}
+    # Hold each flow column on a single x: the spine is straight by
+    # construction (not merely as straight as the initial frame happened
+    # to be). Flow nodes never move in x thereafter.
+    for ci, comp in enumerate(components):
+        for n in comp:
+            pos[n][0] = col_x[ci]
+    for n, (x, y) in pinned.items():
+        pos[n] = [x, y]
     for v in variables:
         lo, hi = lanes[v]
-        my = statistics.median(neighbours_y[v]) if neighbours_y[v] \
-            else init_pos[v][1]
+        ys = [init_pos[m][1] for m in _neighbours(v, edges)
+              if m in init_pos]
+        my = statistics.median(ys) if ys else init_pos[v][1]
         pos[v] = [(lo + hi) / 2, my]
+
+    # Rank-lock: variables in a user `ranks` group share a frozen y.
+    var_set = set(variables)
+    y_locked: dict[str, float] = {}
+    for group in figure.get("ranks", []):
+        members = [m for m in group if m in var_set and m in init_pos]
+        if members:
+            y = statistics.mean(init_pos[m][1] for m in members)
+            for m in members:
+                y_locked[m] = y
+                pos[m][1] = y
+
+    if pinned:
+        diagnostics.append("pinned (user pos): " + ", ".join(sorted(pinned)))
+    if y_locked:
+        diagnostics.append(
+            "rank-locked (user ranks): " + ", ".join(sorted(y_locked))
+        )
 
     def clamp_x(v):
         lo, hi = lanes[v]
@@ -387,7 +423,8 @@ def derive_positions(figure, init_pos, sizes) -> Layout:
             length = math.hypot(dx, dy) or 1.0
             step = min(length, temperature)
             pos[v][0] += dx / length * step
-            pos[v][1] += dy / length * step
+            if v not in y_locked:
+                pos[v][1] += dy / length * step
             clamp_x(v)
         # columns translate vertically as rigid units
         col_force = [0.0] * len(components)
@@ -402,7 +439,7 @@ def derive_positions(figure, init_pos, sizes) -> Layout:
                 pos[n][1] += shift
         temperature = max(MIN_TEMPERATURE, temperature * COOLING)
 
-    _resolve_overlaps(pos, sizes, flow_nodes, lanes)
+    _resolve_overlaps(pos, sizes, immovable, lanes, y_locked)
 
     return Layout(
         positions={n: (pos[n][0], pos[n][1]) for n in node_ids},
@@ -410,6 +447,15 @@ def derive_positions(figure, init_pos, sizes) -> Layout:
         columns=components,
         diagnostics=diagnostics,
     )
+
+
+def _parse_pos(value):
+    """Parse a 'x,y' position string into (x, y), or None if malformed."""
+    try:
+        x, y = str(value).split(",")
+        return float(x), float(y)
+    except (ValueError, AttributeError):
+        return None
 
 
 def _neighbours(node: str, edges: list[dict]) -> set[str]:
@@ -422,10 +468,12 @@ def _neighbours(node: str, edges: list[dict]) -> set[str]:
     return out
 
 
-def _resolve_overlaps(pos, sizes, flow_nodes, lanes) -> bool:
-    """Hard minimum-gap floor: push overlapping boxes apart. Flow nodes
-    are fixed (the spine is rigid); only variables move, and stay in
-    their lane. Returns True if anything moved."""
+def _resolve_overlaps(pos, sizes, immovable, lanes, y_locked=frozenset()) \
+        -> bool:
+    """Hard minimum-gap floor: push overlapping boxes apart. Immovable
+    nodes (flow spine and user-pinned) never move; rank-locked nodes move
+    only laterally; movable variables stay in their lane. Returns True if
+    anything moved."""
     names = list(pos)
     any_moved = False
     for _ in range(80):
@@ -437,8 +485,8 @@ def _resolve_overlaps(pos, sizes, flow_nodes, lanes) -> bool:
             gy = (ha + hb) / 2 + NODE_GAP - abs(pos[a][1] - pos[b][1])
             if gx <= 0 or gy <= 0:
                 continue
-            a_free = a not in flow_nodes
-            b_free = b not in flow_nodes
+            a_free = a not in immovable
+            b_free = b not in immovable
             if not a_free and not b_free:
                 continue
             dx = pos[a][0] - pos[b][0] or 0.1
@@ -446,21 +494,20 @@ def _resolve_overlaps(pos, sizes, flow_nodes, lanes) -> bool:
             d = math.hypot(dx, dy)
             ux, uy = dx / d, dy / d
             shove = min(gx, gy) + 1
-            if a_free and b_free:
-                pos[a][0] += ux * shove / 2
-                pos[a][1] += uy * shove / 2
-                pos[b][0] -= ux * shove / 2
-                pos[b][1] -= uy * shove / 2
-            elif a_free:
-                pos[a][0] += ux * shove
-                pos[a][1] += uy * shove
-            else:
-                pos[b][0] -= ux * shove
-                pos[b][1] -= uy * shove
-            for n in (a, b):
+            share = 0.5 if (a_free and b_free) else 1.0
+
+            def push(n, sign):
+                pos[n][0] += sign * ux * shove * share
+                if n not in y_locked:
+                    pos[n][1] += sign * uy * shove * share
                 if n in lanes:
                     lo, hi = lanes[n]
                     pos[n][0] = min(max(pos[n][0], lo), hi)
+
+            if a_free:
+                push(a, +1)
+            if b_free:
+                push(b, -1)
             moved = any_moved = True
         if not moved:
             break

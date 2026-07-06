@@ -42,19 +42,23 @@ class DiagramMetrics:
     information_length: float
     node_overlaps: int
     edge_node_clips: int
+    spine_lateral_drift: float | None = None
 
     def __str__(self) -> str:
+        drift = "" if self.spine_lateral_drift is None \
+            else f", spine-drift {self.spine_lateral_drift:.0f}"
         return (
             f"crossings {self.crossings}, "
             f"info-length {self.information_length:.0f}, "
             f"overlaps {self.node_overlaps}, "
             f"line-through-node {self.edge_node_clips}"
+            f"{drift}"
         )
 
     def is_clean(self) -> bool:
         """No overlaps and no lines through node bodies: the hard
-        legibility floor. Crossings and length are minimised, not
-        required to be zero."""
+        legibility floor. Crossings, length and spine drift are
+        minimised, not required to be zero."""
         return self.node_overlaps == 0 and self.edge_node_clips == 0
 
 
@@ -133,13 +137,42 @@ def edge_node_clips_from_json(dot_json: str) -> int:
     return clips
 
 
-def measure(dot_source: str, positioned: bool = False) -> DiagramMetrics:
-    """Measure all four metrics for a dot graph. Set positioned=True for
-    a force-layout dot (pinned pos, rendered with neato -n2)."""
+def spine_lateral_drift_from_json(figure: dict, dot_json: str) -> float:
+    """Maximum lateral (x) spread within any conserved-flow column. A
+    straight Forrester spine drifts 0; this guards the skeleton
+    specifically, not just general readability (the material spine
+    wandering sideways was one of the original defects)."""
+    from .layout import CONSERVED_CHANNELS, _flow_components
+
+    data = json.loads(dot_json)
+    xs = {name: x for _, name, x, _, _, _ in _nodes(data)}
+    edges = figure.get("edges", [])
+    node_ids = [n["id"] for n in figure.get("nodes", [])]
+    flow_pairs = [
+        (e["from"], e["to"]) for e in edges
+        if e.get("channel", "information") in CONSERVED_CHANNELS
+    ]
+    drift = 0.0
+    for comp in _flow_components(node_ids, flow_pairs):
+        column_xs = [xs[n] for n in comp if n in xs]
+        if len(column_xs) >= 2:
+            drift = max(drift, max(column_xs) - min(column_xs))
+    return drift
+
+
+def measure(dot_source: str, positioned: bool = False,
+            figure: dict | None = None) -> DiagramMetrics:
+    """Measure the structural metrics for a dot graph. Set positioned=True
+    for a force-layout dot (pinned pos, rendered with neato -n2). Pass the
+    figure declaration to also measure spine lateral drift."""
     dot_json = _render_json(dot_source, positioned)
     return DiagramMetrics(
         crossings=count_crossings_from_json(dot_json).total,
         information_length=information_length_from_json(dot_json),
         node_overlaps=node_overlaps_from_json(dot_json),
         edge_node_clips=edge_node_clips_from_json(dot_json),
+        spine_lateral_drift=(
+            None if figure is None
+            else spine_lateral_drift_from_json(figure, dot_json)
+        ),
     )
